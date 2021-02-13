@@ -8,3 +8,4 @@
 13-02-2021
 - implemented output enable / disable
 - implemented device identification and device status
+- implemented updateDisplay, userSetVoltage, userSetCurrent, actualOutputVoltage, actualOutputCurrent

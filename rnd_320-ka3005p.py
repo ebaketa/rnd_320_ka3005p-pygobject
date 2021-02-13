@@ -40,6 +40,10 @@ class mainWindow():
         self.outputOnOff = False
 
         # gui interface
+        self.lblDisplayVoltage = self.builder.get_object("lblDisplayVoltage")
+        self.lblDisplayCurrent = self.builder.get_object("lblDisplayCurrent")
+        self.lblUserSetVoltage = self.builder.get_object("lblUserSetVoltage")
+        self.lblUserSetCurrent = self.builder.get_object("lblUserSetCurrent")
         self.lblSerialPortStatus = self.builder.get_object("lblSerialPortStatus")
         self.btnPowerOnOff = self.builder.get_object("btnPowerOnOff")
         self.btnOutputOnOff = self.builder.get_object("btnOutputOnOff")
@@ -77,6 +81,7 @@ class mainWindow():
                     # read device identification
                     self._getDeviceIdentification = self.communicationPort.read(self.communicationPort.in_waiting)
                     self.lblSerialPortStatus.set_text(self._getDeviceIdentification + ' connected via communication port: ' + serialPortValid)
+                    self.powerOnOff = True
         elif(self.serialPortAvailable == False):
             self.lblSerialPortStatus.set_text('Device not connected!')
         else:
@@ -84,8 +89,6 @@ class mainWindow():
 
         # update display
         self.updateDisplay()
-        print(self.getDeviceID())
-        print(self.getDeviceStatus())
 
     # device identification
     def getDeviceID(self):
@@ -103,23 +106,70 @@ class mainWindow():
 
     # update display
     def updateDisplay(self):
-        pass
+        if(self.powerOnOff == True and self.outputOnOff == True):
+            self.lblDisplayVoltage.set_text("{:05.2f}".format(self.actualOutputVoltage()) + "V")
+            self.lblDisplayCurrent.set_text("{:05.3f}".format(self.actualOutputCurrent()) + "A")
+            self.lblUserSetVoltage.set_text("{:05.2f}".format(self.userSetVoltage()) + "V")
+            self.lblUserSetCurrent.set_text("{:05.3f}".format(self.userSetCurrent()) + "A")
+        elif(self.powerOnOff == True and self.outputOnOff == False):
+            self.lblDisplayVoltage.set_text("{:05.2f}".format(self.userSetVoltage()) + "V")
+            self.lblDisplayCurrent.set_text("{:05.3f}".format(self.userSetCurrent()) + "A")
+            self.lblUserSetVoltage.set_text("{:05.2f}".format(self.userSetVoltage()) + "V")
+            self.lblUserSetCurrent.set_text("{:05.3f}".format(self.userSetCurrent()) + "A")
+        else:
+            print("Unknown error!")
 
     def on_delete(self, widget, data=None):
         # only close port if it is available
         if(self.serialPortAvailable == True and self.communicationPort.is_open):
             self.communicationPort.close()
 
+    # output enable or disable
     def on_btnOutputOnOff_clicked(self, button):
         self.outputOnOff = not self.outputOnOff
         if(self.outputOnOff == False):
             self.communicationPort.write("OUT0")
-            time.sleep(0.1)
+            time.sleep(0.15)
         elif(self.outputOnOff == True):
             self.communicationPort.write("OUT1")
-            time.sleep(0.1)
+            time.sleep(0.15)
         else:
             print("Unknown error!")
+        # update display
+        self.updateDisplay()
+
+    # fetch an current set voltage
+    def userSetVoltage(self):
+        self.communicationPort.write("VSET1?")
+        time.sleep(0.15)
+        _userSetVoltage = self.communicationPort.read(self.communicationPort.in_waiting)
+        _userSetVoltage = _userSetVoltage.encode('ascii')
+
+        return float(_userSetVoltage)
+
+    # fetch an current set current
+    def userSetCurrent(self):
+        self.communicationPort.write("ISET1?")
+        time.sleep(0.15)
+        _userSetCurrent = self.communicationPort.read(self.communicationPort.in_waiting)
+
+        return float(_userSetCurrent)
+
+    # fetch an actual output voltage
+    def actualOutputVoltage(self):
+        self.communicationPort.write("VOUT1?")
+        time.sleep(0.15)
+        _actualOutputVoltage = self.communicationPort.read(self.communicationPort.in_waiting)
+
+        return float(_actualOutputVoltage)
+
+    # fetch an actual output current
+    def actualOutputCurrent(self):
+        self.communicationPort.write("IOUT1?")
+        time.sleep(0.15)
+        _actualOutputCurrent = self.communicationPort.read(self.communicationPort.in_waiting)
+
+        return float(_actualOutputCurrent)
 
 if __name__ == '__main__':
     main = mainWindow()
