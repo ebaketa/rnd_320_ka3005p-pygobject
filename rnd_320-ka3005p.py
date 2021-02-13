@@ -47,10 +47,18 @@ class mainWindow():
         self.lblUserSetVoltage = self.builder.get_object("lblUserSetVoltage")
         self.lblUserSetCurrent = self.builder.get_object("lblUserSetCurrent")
         self.lblSerialPortStatus = self.builder.get_object("lblSerialPortStatus")
+        self.btnM1 = self.builder.get_object("btnM1")
+        self.btnM2 = self.builder.get_object("btnM2")
+        self.btnM3 = self.builder.get_object("btnM3")
+        self.btnM4 = self.builder.get_object("btnM4")
         self.btnPowerOnOff = self.builder.get_object("btnPowerOnOff")
         self.btnOVP = self.builder.get_object("btnOVP")
         self.btnOCP = self.builder.get_object("btnOCP")
         self.btnOutputOnOff = self.builder.get_object("btnOutputOnOff")
+        self.btnM1.connect("clicked", self.clicked_M1)
+        self.btnM2.connect("clicked", self.clicked_M2)
+        self.btnM3.connect("clicked", self.clicked_M3)
+        self.btnM4.connect("clicked", self.clicked_M4)
         self.btnOVP.connect("clicked", self.clicked_OVP)
         self.btnOCP.connect("clicked", self.clicked_OCP)
         self.btnOutputOnOff.connect("clicked", self.clicked_btnOutputOnOff)
@@ -130,6 +138,34 @@ class mainWindow():
         if(self.serialPortAvailable == True and self.communicationPort.is_open):
             self.communicationPort.close()
 
+    # 
+    def clicked_M1(self, button):
+        self.disableOutput()
+        self.communicationPort.write("RCL1")
+        time.sleep(0.15)
+        self.updateDisplay()
+
+    # 
+    def clicked_M2(self, button):
+        self.disableOutput()
+        self.communicationPort.write("RCL2")
+        time.sleep(0.15)
+        self.updateDisplay()
+
+    # 
+    def clicked_M3(self, button):
+        self.disableOutput()
+        self.communicationPort.write("RCL3")
+        time.sleep(0.15)
+        self.updateDisplay()
+
+    # 
+    def clicked_M4(self, button):
+        self.disableOutput()
+        self.communicationPort.write("RCL4")
+        time.sleep(0.15)
+        self.updateDisplay()
+
     # output enable or disable
     def clicked_btnOutputOnOff(self, button):
         self.outputOnOff = not self.outputOnOff
@@ -171,7 +207,7 @@ class mainWindow():
         self.communicationPort.write("VSET1?")
         time.sleep(0.15)
         _userSetVoltage = self.communicationPort.read(self.communicationPort.in_waiting)
-        _userSetVoltage = _userSetVoltage.encode('ascii')
+        # _userSetVoltage = _userSetVoltage.encode('ascii')
 
         return float(_userSetVoltage)
 
@@ -198,6 +234,13 @@ class mainWindow():
         _actualOutputCurrent = self.communicationPort.read(self.communicationPort.in_waiting)
 
         return float(_actualOutputCurrent)
+
+    # output disable
+    def disableOutput(self):
+        self.outputOnOff = False
+        self.communicationPort.write("OUT0")
+        time.sleep(0.15)
+        
 
 if __name__ == '__main__':
     main = mainWindow()
