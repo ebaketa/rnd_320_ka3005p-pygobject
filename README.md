@@ -16,6 +16,7 @@
 - PyGObject
 
 **Installing The Library**
+
 ***PySerial***
 ```
 # python version 2
