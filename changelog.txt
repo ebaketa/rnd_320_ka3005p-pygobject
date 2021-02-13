@@ -10,4 +10,4 @@
 - implemented device identification and device status
 - implemented updateDisplay, userSetVoltage, userSetCurrent, actualOutputVoltage, actualOutputCurrent
 - implemented clicked_OVP, clicked_OCP
-
+- changed on_btnOutputOnOff_clicked to clicked_btnOutputOnOff

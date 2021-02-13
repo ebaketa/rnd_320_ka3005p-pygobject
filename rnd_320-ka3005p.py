@@ -53,7 +53,7 @@ class mainWindow():
         self.btnOutputOnOff = self.builder.get_object("btnOutputOnOff")
         self.btnOVP.connect("clicked", self.clicked_OVP)
         self.btnOCP.connect("clicked", self.clicked_OCP)
-        self.btnOutputOnOff.connect("clicked", self.on_btnOutputOnOff_clicked)
+        self.btnOutputOnOff.connect("clicked", self.clicked_btnOutputOnOff)
 
         # show application window
         # self.window.show()
@@ -131,7 +131,7 @@ class mainWindow():
             self.communicationPort.close()
 
     # output enable or disable
-    def on_btnOutputOnOff_clicked(self, button):
+    def clicked_btnOutputOnOff(self, button):
         self.outputOnOff = not self.outputOnOff
         if(self.outputOnOff == False):
             self.communicationPort.write("OUT0")
@@ -143,6 +143,28 @@ class mainWindow():
             print("Unknown error!")
         # update display
         self.updateDisplay()
+
+    # ovp enable / disable
+    def clicked_OVP(self, button):
+        self.ovpEnable = not self.ovpEnable
+        if(self.ovpEnable == True):
+            self.communicationPort.write("OVP1")
+        elif(self.ovpEnable == False):
+            self.communicationPort.write("OVP0")
+        else:
+            print("Unknown error!")
+        time.sleep(0.15)
+
+    # ocp enable / disable
+    def clicked_OCP(self, button):
+        self.ocpEnable = not self.ocpEnable
+        if(self.ocpEnable == True):
+            self.communicationPort.write("OCP1")
+        elif(self.ocpEnable == False):
+            self.communicationPort.write("OCP0")
+        else:
+            print("Unknown error!")
+        time.sleep(0.15)
 
     # fetch an current set voltage
     def userSetVoltage(self):
@@ -176,28 +198,6 @@ class mainWindow():
         _actualOutputCurrent = self.communicationPort.read(self.communicationPort.in_waiting)
 
         return float(_actualOutputCurrent)
-
-    # ovp enable / disable
-    def clicked_OVP(self, button):
-        self.ovpEnable = not self.ovpEnable
-        if(self.ovpEnable == True):
-            self.communicationPort.write("OVP1")
-        elif(self.ovpEnable == False):
-            self.communicationPort.write("OVP0")
-        else:
-            print("Unknown error!")
-        time.sleep(0.15)
-
-    # ocp enable / disable
-    def clicked_OCP(self, button):
-        self.ocpEnable = not self.ocpEnable
-        if(self.ocpEnable == True):
-            self.communicationPort.write("OCP1")
-        elif(self.ocpEnable == False):
-            self.communicationPort.write("OCP0")
-        else:
-            print("Unknown error!")
-        time.sleep(0.15)
 
 if __name__ == '__main__':
     main = mainWindow()
