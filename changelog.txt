@@ -9,3 +9,5 @@
 - implemented output enable / disable
 - implemented device identification and device status
 - implemented updateDisplay, userSetVoltage, userSetCurrent, actualOutputVoltage, actualOutputCurrent
+- implemented clicked_OVP, clicked_OCP
+
