@@ -16,10 +16,10 @@
 - PyGObject
 
 **Installing The Library**
-PySerial
--sudo apt install python-serial python3-serial
-PyGObject
--# python version 2
--sudo apt install python-gi python-gi-cairo gir1.2-gtk-3.0
--# python version 3
--sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0
+-PySerial
+--sudo apt install python-serial python3-serial
+-PyGObject
+--# python version 2
+--sudo apt install python-gi python-gi-cairo gir1.2-gtk-3.0
+--# python version 3
+--sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0
