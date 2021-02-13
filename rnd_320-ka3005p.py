@@ -23,8 +23,6 @@ class mainWindow():
         self.builder = Gtk.Builder()
         self.builder.add_from_file(gladeFile)
         self.builder.connect_signals(self)
-
-        # create main window
         self.window = self.builder.get_object("mainWindow")
         # set window position
         self.window.set_position(Gtk.WindowPosition.CENTER)
@@ -34,13 +32,15 @@ class mainWindow():
         self.window.connect("delete-event", self.on_delete)
         self.window.connect("realize", self.on_realize)
 
-       # gui interface
+        # global variables
+        self.powerOnOff = False
+        self.outputOnOff = False
+
+        # gui interface
         self.lblSerialPortStatus = self.builder.get_object("lblSerialPortStatus")
         self.btnPowerOnOff = self.builder.get_object("btnPowerOnOff")
-        self.btnMOne = self.builder.get_object("btnMOne")
-        self.btnMTwo = self.builder.get_object("btnMTwo")
-        self.btnMThre = self.builder.get_object("btnMThree")
-        self.btnMFour = self.builder.get_object("btnMFour")
+        self.btnOutputOnOff = self.builder.get_object("btnOutputOnOff")
+        self.btnOutputOnOff.connect("clicked", self.on_btnOutputOnOff_clicked)
 
         # show application window
         # self.window.show()
@@ -81,20 +81,23 @@ class mainWindow():
         self.updateDisplay()
 
     def updateDisplay(self):
-        if(self.serialPortAvailable == True and self.communicationPort.is_open):
-            self.btnPowerOnOff.set_active(True)
-            self.btnMOne.set_active(True)
-        else:
-            self.btnPowerOnOff.set_active(False)
-            self.btnMOne.set_active(False)
+        pass
 
     def on_delete(self, widget, data=None):
         # only close port if it is available
         if(self.serialPortAvailable == True and self.communicationPort.is_open):
             self.communicationPort.close()
 
-    def outputOnOff_clicked(self):
-        print("jdshfkjshd")
+    def on_btnOutputOnOff_clicked(self, button):
+        self.outputOnOff = not self.outputOnOff
+        if(self.outputOnOff == False):
+            self.communicationPort.write("OUT0")
+            time.sleep(0.1)
+        elif(self.outputOnOff == True):
+            self.communicationPort.write("OUT1")
+            time.sleep(0.1)
+        else:
+            print("Unknown error!")
 
 if __name__ == '__main__':
     main = mainWindow()

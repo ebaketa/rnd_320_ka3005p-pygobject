@@ -134,7 +134,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkToggleButton" id="btnMOne">
+              <object class="GtkButton" id="btnMOne">
                 <property name="label" translatable="yes">M1</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -190,7 +190,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkToggleButton" id="btnMTwo">
+              <object class="GtkButton" id="btnMTwo">
                 <property name="label" translatable="yes">M2</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -246,7 +246,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkToggleButton" id="btnMThree">
+              <object class="GtkButton" id="btnMThree">
                 <property name="label" translatable="yes">M3</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -302,7 +302,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkToggleButton" id="btnMFour">
+              <object class="GtkButton" id="btnMFour">
                 <property name="label" translatable="yes">M4</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -316,7 +316,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkToggleButton" id="btnPowerOnOff">
+              <object class="GtkButton" id="btnPowerOnOff">
                 <property name="label" translatable="yes">Power
 On / Off</property>
                 <property name="visible">True</property>
@@ -331,7 +331,7 @@ On / Off</property>
               </packing>
             </child>
             <child>
-              <object class="GtkToggleButton" id="btnOVP">
+              <object class="GtkButton" id="btnOVP">
                 <property name="label" translatable="yes">OVP</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -345,7 +345,7 @@ On / Off</property>
               </packing>
             </child>
             <child>
-              <object class="GtkToggleButton" id="btnOCP">
+              <object class="GtkButton" id="btnOCP">
                 <property name="label" translatable="yes">OCP</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -359,7 +359,7 @@ On / Off</property>
               </packing>
             </child>
             <child>
-              <object class="GtkToggleButton" id="btnOutputOnOff">
+              <object class="GtkButton" id="btnOutputOnOff">
                 <property name="label" translatable="yes">Output
 On / Off</property>
                 <property name="visible">True</property>
