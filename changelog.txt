@@ -1,0 +1,10 @@
+# Program:      KORAD DC POWER SUPPLY CONTROL
+# Author:       Elvis Baketa
+# Device:       RND 320-KA3005P
+#               Python 2.7.16
+#               PyGObject
+#               PySerial
+
+13-02-2021
+- implemented output enable / disable
+- implemented device identification and device status

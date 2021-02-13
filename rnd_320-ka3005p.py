@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# RND 320-KA3005P
-# Python 2.7.16
-# PyGObject
-# PySerial
+# Program:      KORAD DC POWER SUPPLY CONTROL
+# Author:       Elvis Baketa
+# Device:       RND 320-KA3005P
+#               Python 2.7.16
+#               PyGObject
+#               PySerial
 
 import gi
 
@@ -19,6 +21,7 @@ import time
 
 class mainWindow():
     def __init__(self):
+        # application window
         gladeFile = "rnd_320-ka3005p.glade"
         self.builder = Gtk.Builder()
         self.builder.add_from_file(gladeFile)
@@ -45,6 +48,7 @@ class mainWindow():
         # show application window
         # self.window.show()
 
+    # function to prepare the program for start
     def on_realize(self, widget, data=None):
         # get list of serial ports
         serialPortList = serial.tools.list_ports.comports()
@@ -67,19 +71,37 @@ class mainWindow():
                     serialPortValid = serialPort.device
                     # open valid serial port for communication
                     self.communicationPort = serial.Serial(serialPortValid)
-                    # check if communication port is open
+                    # send command to get device identification
                     self.communicationPort.write("*IDN?")
                     time.sleep(0.15)
-                    # get psu identification id
+                    # read device identification
                     self._getDeviceIdentification = self.communicationPort.read(self.communicationPort.in_waiting)
                     self.lblSerialPortStatus.set_text(self._getDeviceIdentification + ' connected via communication port: ' + serialPortValid)
         elif(self.serialPortAvailable == False):
             self.lblSerialPortStatus.set_text('Device not connected!')
         else:
             print('Unknown error!')
+
         # update display
         self.updateDisplay()
+        print(self.getDeviceID())
+        print(self.getDeviceStatus())
 
+    # device identification
+    def getDeviceID(self):
+        self.communicationPort.write("*IDN?")
+        time.sleep(0.1)
+        deviceID = self.communicationPort.read(self.communicationPort.in_waiting)
+        return deviceID
+
+    # device status
+    def getDeviceStatus(self):
+        self.communicationPort.write("STATUS?")
+        time.sleep(0.1)
+        deviceStatus = self.communicationPort.read(self.communicationPort.in_waiting)
+        return deviceStatus.encode('hex')
+
+    # update display
     def updateDisplay(self):
         pass
 
