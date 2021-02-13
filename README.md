@@ -15,7 +15,7 @@
 - PySerial
 - PyGObject
 
-**Installing PySerial:**
+##Installing PySerial:
 ```
 # python version 2
 sudo apt install python-serial
@@ -23,7 +23,7 @@ sudo apt install python-serial
 # python version 3
 sudo apt install python3-serial
 ```
-**Installing PyGObject:**
+##Installing PyGObject:
 ```
 # python version 2
 sudo apt install python-gi python-gi-cairo gir1.2-gtk-3.0
