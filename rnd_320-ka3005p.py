@@ -40,6 +40,8 @@ class mainWindow():
         self.outputOnOff = False
         self.ocpEnable = False
         self.ovpEnable = False
+        self._userSetVoltage = 0.00
+        self._userSetCurrent = 0.000
 
         # gui interface
         self.lblDisplayVoltage = self.builder.get_object("lblDisplayVoltage")
@@ -47,6 +49,8 @@ class mainWindow():
         self.lblUserSetVoltage = self.builder.get_object("lblUserSetVoltage")
         self.lblUserSetCurrent = self.builder.get_object("lblUserSetCurrent")
         self.lblSerialPortStatus = self.builder.get_object("lblSerialPortStatus")
+        self.btnSetVoltage = self.builder.get_object("btnSetVoltage")
+        self.btnSetCurrent = self.builder.get_object("btnSetCurrent")
         self.btnM1 = self.builder.get_object("btnM1")
         self.btnM2 = self.builder.get_object("btnM2")
         self.btnM3 = self.builder.get_object("btnM3")
@@ -55,6 +59,8 @@ class mainWindow():
         self.btnOVP = self.builder.get_object("btnOVP")
         self.btnOCP = self.builder.get_object("btnOCP")
         self.btnOutputOnOff = self.builder.get_object("btnOutputOnOff")
+        self.btnSetVoltage.connect("clicked", self.clicked_setVoltage)
+        self.btnSetCurrent.connect("clicked", self.clicked_setCurrent)
         self.btnM1.connect("clicked", self.clicked_M1)
         self.btnM2.connect("clicked", self.clicked_M2)
         self.btnM3.connect("clicked", self.clicked_M3)
@@ -137,6 +143,14 @@ class mainWindow():
         # only close port if it is available
         if(self.serialPortAvailable == True and self.communicationPort.is_open):
             self.communicationPort.close()
+
+    # 
+    def clicked_setVoltage(self):
+        pass
+
+    # 
+    def clicked_setCurrent(self):
+        pass
 
     # 
     def clicked_M1(self, button):

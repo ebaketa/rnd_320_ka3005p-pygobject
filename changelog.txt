@@ -14,3 +14,5 @@
 
 14-02-2021
 - implemented disableOutput, clicked_M1, clicked_M2, clicked_M3, clicked_M4
+- changes in README file and start implementig setVoltage and setCurrent
+- 

@@ -92,7 +92,7 @@
             <property name="row_homogeneous">True</property>
             <property name="column_homogeneous">True</property>
             <child>
-              <object class="GtkButton" id="btnNrSeven">
+              <object class="GtkButton" id="btnN7">
                 <property name="label" translatable="yes">7</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -106,7 +106,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="btnNrEight">
+              <object class="GtkButton" id="btnN8">
                 <property name="label" translatable="yes">8</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -120,7 +120,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="btnNrNine">
+              <object class="GtkButton" id="btnN9">
                 <property name="label" translatable="yes">9</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -148,7 +148,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="btnNrFour">
+              <object class="GtkButton" id="btnN4">
                 <property name="label" translatable="yes">4</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -162,7 +162,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="btnNrFive">
+              <object class="GtkButton" id="btnN5">
                 <property name="label" translatable="yes">5</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -176,7 +176,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="btnNrSix">
+              <object class="GtkButton" id="btnN6">
                 <property name="label" translatable="yes">6</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -204,7 +204,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="bntNrOne">
+              <object class="GtkButton" id="bntN1">
                 <property name="label" translatable="yes">1</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -218,7 +218,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="btnNrTwo">
+              <object class="GtkButton" id="btnN2">
                 <property name="label" translatable="yes">2</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -232,7 +232,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="btnNrThree">
+              <object class="GtkButton" id="btnN3">
                 <property name="label" translatable="yes">3</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -260,7 +260,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="btnNrZero">
+              <object class="GtkButton" id="btnN0">
                 <property name="label" translatable="yes">0</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>

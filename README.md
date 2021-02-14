@@ -31,3 +31,9 @@ sudo apt install python-gi python-gi-cairo gir1.2-gtk-3.0
 # python version 3
 sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0
 ```
+## Cloning repository and Running program:
+```
+git clone https://github.com/ebaketa/rnd_320-ka3005p.git
+
+python ./rnd_320-ka3005p.py
+```
