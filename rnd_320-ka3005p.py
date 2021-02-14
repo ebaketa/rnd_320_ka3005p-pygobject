@@ -42,6 +42,10 @@ class mainWindow():
         self.ovpEnable = False
         self._userSetVoltage = 0.00
         self._userSetCurrent = 0.000
+        self._activeSetVoltage = False
+        self._activeSetCurrent = False
+        self.temp_setVoltage = ''
+        self.temp_setCurrent = ''
 
         # gui interface
         self.lblDisplayVoltage = self.builder.get_object("lblDisplayVoltage")
@@ -49,6 +53,16 @@ class mainWindow():
         self.lblUserSetVoltage = self.builder.get_object("lblUserSetVoltage")
         self.lblUserSetCurrent = self.builder.get_object("lblUserSetCurrent")
         self.lblSerialPortStatus = self.builder.get_object("lblSerialPortStatus")
+        self.btnN0 = self.builder.get_object("btnN0")
+        self.btnN1 = self.builder.get_object("btnN1")
+        self.btnN2 = self.builder.get_object("btnN2")
+        self.btnN3 = self.builder.get_object("btnN3")
+        self.btnN4 = self.builder.get_object("btnN4")
+        self.btnN5 = self.builder.get_object("btnN5")
+        self.btnN6 = self.builder.get_object("btnN6")
+        self.btnN7 = self.builder.get_object("btnN7")
+        self.btnN8 = self.builder.get_object("btnN8")
+        self.btnN9 = self.builder.get_object("btnN9")
         self.btnSetVoltage = self.builder.get_object("btnSetVoltage")
         self.btnSetCurrent = self.builder.get_object("btnSetCurrent")
         self.btnM1 = self.builder.get_object("btnM1")
@@ -59,6 +73,16 @@ class mainWindow():
         self.btnOVP = self.builder.get_object("btnOVP")
         self.btnOCP = self.builder.get_object("btnOCP")
         self.btnOutputOnOff = self.builder.get_object("btnOutputOnOff")
+        self.btnN0.connect("clicked", self.clicked_Numeric, 0)
+        self.btnN1.connect("clicked", self.clicked_Numeric, 1)
+        self.btnN2.connect("clicked", self.clicked_Numeric, 2)
+        self.btnN3.connect("clicked", self.clicked_Numeric, 3)
+        self.btnN4.connect("clicked", self.clicked_Numeric, 4)
+        self.btnN5.connect("clicked", self.clicked_Numeric, 5)
+        self.btnN6.connect("clicked", self.clicked_Numeric, 6)
+        self.btnN7.connect("clicked", self.clicked_Numeric, 7)
+        self.btnN8.connect("clicked", self.clicked_Numeric, 8)
+        self.btnN9.connect("clicked", self.clicked_Numeric, 9)
         self.btnSetVoltage.connect("clicked", self.clicked_setVoltage)
         self.btnSetCurrent.connect("clicked", self.clicked_setCurrent)
         self.btnM1.connect("clicked", self.clicked_M1)
@@ -145,12 +169,41 @@ class mainWindow():
             self.communicationPort.close()
 
     # 
-    def clicked_setVoltage(self):
-        pass
+    def clicked_setVoltage(self, button):
+        self._userSetVoltage = 0.00
+        self._activeSetVoltage = not self._activeSetVoltage
 
     # 
-    def clicked_setCurrent(self):
-        pass
+    def clicked_setCurrent(self, button):
+        self._userSetCurrent = 0.000
+        self._activeSetCurrent = not self._activeSetCurrent
+
+    # 
+    def clicked_Numeric(self, button, data):
+        if(self._activeSetVoltage == True):
+            self.temp_setVoltage = self.temp_setVoltage + str(data)
+            self._userSetVoltage = float(self.temp_setVoltage)
+            self._userSetVoltage = self._userSetVoltage / 100
+            self._userSetVoltage = ("{:05.2f}".format(self._userSetVoltage))
+            self.lblDisplayVoltage.set_text(self._userSetVoltage + "V")
+            if(len(self.temp_setVoltage) == 4):
+                self.writeUserSetVoltage()
+                self.updateDisplay()
+                self._activeSetVoltage = False
+                self.temp_setVoltage = ''
+        elif(self._activeSetCurrent == True):
+            self.temp_setCurrent = self.temp_setCurrent + str(data)
+            self._userSetCurrent = float(self.temp_setCurrent)
+            self._userSetCurrent = self._userSetCurrent / 1000
+            self._userSetCurrent = ("{:05.3f}".format(self._userSetCurrent))
+            self.lblDisplayCurrent.set_text(self._userSetCurrent + "A")
+            if(len(self.temp_setCurrent) == 4):
+                self.writeUserSetCurrent()
+                self.updateDisplay()
+                self._activeSetCurrent = False
+                self.temp_setCurrent = ''
+        else:
+            pass
 
     # 
     def clicked_M1(self, button):
@@ -216,7 +269,7 @@ class mainWindow():
             print("Unknown error!")
         time.sleep(0.15)
 
-    # fetch an current set voltage
+    # fetch an current user set voltage
     def userSetVoltage(self):
         self.communicationPort.write("VSET1?")
         time.sleep(0.15)
@@ -225,7 +278,7 @@ class mainWindow():
 
         return float(_userSetVoltage)
 
-    # fetch an current set current
+    # fetch an current user set current
     def userSetCurrent(self):
         self.communicationPort.write("ISET1?")
         time.sleep(0.15)
@@ -248,6 +301,16 @@ class mainWindow():
         _actualOutputCurrent = self.communicationPort.read(self.communicationPort.in_waiting)
 
         return float(_actualOutputCurrent)
+
+    # write an current user set voltage
+    def writeUserSetVoltage(self):
+        self.communicationPort.write("VSET1:" + self._userSetVoltage.encode('ascii'))
+        time.sleep(0.15)
+
+    # write an current user set current
+    def writeUserSetCurrent(self):
+        self.communicationPort.write("ISET1:" + self._userSetCurrent.encode('ascii'))
+        time.sleep(0.15)
 
     # output disable
     def disableOutput(self):
