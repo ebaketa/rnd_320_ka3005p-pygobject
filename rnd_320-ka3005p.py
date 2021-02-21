@@ -172,6 +172,10 @@ class mainWindow():
     def clicked_setVoltage(self, button):
         self._userSetVoltage = 0.00
         self._activeSetVoltage = not self._activeSetVoltage
+        if(self._activeSetVoltage == True):
+            self.btnSetVoltage.override_background_color(Gtk.StateFlags.NORMAL, Gdk.RGBA(0,0,128));
+        elif(self._activeSetVoltage == False):
+            self.btnSetVoltage.modify_bg(Gtk.StateType.NORMAL, Gdk.color_parse("#333333"))
 
     # 
     def clicked_setCurrent(self, button):
