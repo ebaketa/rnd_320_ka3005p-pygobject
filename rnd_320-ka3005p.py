@@ -31,6 +31,7 @@ class mainWindow():
         self.window.set_position(Gtk.WindowPosition.CENTER)
         # set windows title
         self.window.set_title("KORAD DC POWER SUPPLY CONTROL")
+        self.window.connect("key-press-event",self.on_key_press_event)
         self.window.connect("destroy", Gtk.main_quit)
         self.window.connect("delete-event", self.on_delete)
         self.window.connect("realize", self.on_realize)
@@ -92,7 +93,7 @@ class mainWindow():
         self.btnM5.connect("clicked", self.clicked_M5)
         self.btnOVP.connect("clicked", self.clicked_OVP)
         self.btnOCP.connect("clicked", self.clicked_OCP)
-        self.btnOutputOnOff.connect("clicked", self.clicked_btnOutputOnOff)
+        self.btnOutputOnOff.connect("clicked", self.clicked_outputOnOff)
 
         # show application window
         # self.window.show()
@@ -134,6 +135,41 @@ class mainWindow():
 
         # update display
         self.updateDisplay()
+
+    # function that resolve key press events
+    def on_key_press_event(self, widget, event):
+        if(event.keyval == Gdk.KEY_KP_0 or event.keyval == Gdk.KEY_0):
+            self.clicked_Numeric("clicked", 0)
+        elif(event.keyval == Gdk.KEY_KP_1 or event.keyval == Gdk.KEY_1):
+            self.clicked_Numeric("clicked", 1)
+        elif(event.keyval == Gdk.KEY_KP_2 or event.keyval == Gdk.KEY_2):
+            self.clicked_Numeric("clicked", 2)
+        elif(event.keyval == Gdk.KEY_KP_3 or event.keyval == Gdk.KEY_3):
+            self.clicked_Numeric("clicked", 3)
+        elif(event.keyval == Gdk.KEY_KP_4 or event.keyval == Gdk.KEY_4):
+            self.clicked_Numeric("clicked", 4)
+        elif(event.keyval == Gdk.KEY_KP_5 or event.keyval == Gdk.KEY_5):
+            self.clicked_Numeric("clicked", 5)
+        elif(event.keyval == Gdk.KEY_KP_6 or event.keyval == Gdk.KEY_6):
+            self.clicked_Numeric("clicked", 6)
+        elif(event.keyval == Gdk.KEY_KP_7 or event.keyval == Gdk.KEY_7):
+            self.clicked_Numeric("clicked", 7)
+        elif(event.keyval == Gdk.KEY_KP_8 or event.keyval == Gdk.KEY_8):
+            self.clicked_Numeric("clicked", 8)
+        elif(event.keyval == Gdk.KEY_KP_9 or event.keyval == Gdk.KEY_9):
+            self.clicked_Numeric("clicked", 9)
+        elif(event.keyval == Gdk.KEY_o):
+            self.clicked_outputOnOff("clicked")
+        elif(event.keyval == Gdk.KEY_v):
+            self.clicked_setVoltage("clicked")
+        elif(event.keyval == Gdk.KEY_a):
+            self.clicked_setCurrent("clicked")
+        elif(event.keyval == Gdk.KEY_m and event.keyval == Gdk.KEY_1):
+            self.clicked_setCurrent("clicked")
+
+        print("Key press on widget: ", widget)
+        print("          Modifiers: ", event.state)
+        print("      Key val, name: ", event.keyval, Gdk.keyval_name(event.keyval))
 
     # device identification
     def getDeviceID(self):
@@ -252,7 +288,7 @@ class mainWindow():
         self.updateDisplay()
 
     # output enable or disable
-    def clicked_btnOutputOnOff(self, button):
+    def clicked_outputOnOff(self, button):
         self.outputOnOff = not self.outputOnOff
         if(self.outputOnOff == False):
             self.communicationPort.write("OUT0")

@@ -17,3 +17,9 @@
 - changes in README file and start implementig setVoltage and setCurrent
 - implemented clicked_setVoltage, clicked_setCurrent, clicked_Numeric, writeUserSetVoltage, writeUserSetCurrent
 
+24-02-2021
+- changed clicked_btnOutputOnOff -> clicked_outputOnOff
+- key press events
+    -> select set voltage and enter values with numbers on keyboard
+    -> select set current and enter values with numbers on keyboard
+
