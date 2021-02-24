@@ -69,7 +69,7 @@ class mainWindow():
         self.btnM2 = self.builder.get_object("btnM2")
         self.btnM3 = self.builder.get_object("btnM3")
         self.btnM4 = self.builder.get_object("btnM4")
-        self.btnPowerOnOff = self.builder.get_object("btnPowerOnOff")
+        self.btnM5 = self.builder.get_object("btnM5")
         self.btnOVP = self.builder.get_object("btnOVP")
         self.btnOCP = self.builder.get_object("btnOCP")
         self.btnOutputOnOff = self.builder.get_object("btnOutputOnOff")
@@ -89,6 +89,7 @@ class mainWindow():
         self.btnM2.connect("clicked", self.clicked_M2)
         self.btnM3.connect("clicked", self.clicked_M3)
         self.btnM4.connect("clicked", self.clicked_M4)
+        self.btnM5.connect("clicked", self.clicked_M5)
         self.btnOVP.connect("clicked", self.clicked_OVP)
         self.btnOCP.connect("clicked", self.clicked_OCP)
         self.btnOutputOnOff.connect("clicked", self.clicked_btnOutputOnOff)
@@ -173,14 +174,18 @@ class mainWindow():
         self._userSetVoltage = 0.00
         self._activeSetVoltage = not self._activeSetVoltage
         if(self._activeSetVoltage == True):
-            self.btnSetVoltage.override_background_color(Gtk.StateFlags.NORMAL, Gdk.RGBA(0,0,128));
+            self.btnSetVoltage.modify_font(Pango.FontDescription('bold'))
         elif(self._activeSetVoltage == False):
-            self.btnSetVoltage.modify_bg(Gtk.StateType.NORMAL, Gdk.color_parse("#333333"))
+            self.btnSetVoltage.modify_font(Pango.FontDescription('normal'))
 
     # 
     def clicked_setCurrent(self, button):
         self._userSetCurrent = 0.000
         self._activeSetCurrent = not self._activeSetCurrent
+        if(self._activeSetCurrent == True):
+            self.btnSetCurrent.modify_font(Pango.FontDescription('bold'))
+        elif(self._activeSetCurrent == False):
+            self.btnSetCurrent.modify_font(Pango.FontDescription('normal'))
 
     # 
     def clicked_Numeric(self, button, data):
@@ -195,6 +200,7 @@ class mainWindow():
                 self.updateDisplay()
                 self._activeSetVoltage = False
                 self.temp_setVoltage = ''
+                self.btnSetVoltage.modify_font(Pango.FontDescription('normal'))
         elif(self._activeSetCurrent == True):
             self.temp_setCurrent = self.temp_setCurrent + str(data)
             self._userSetCurrent = float(self.temp_setCurrent)
@@ -206,6 +212,7 @@ class mainWindow():
                 self.updateDisplay()
                 self._activeSetCurrent = False
                 self.temp_setCurrent = ''
+                self.btnSetCurrent.modify_font(Pango.FontDescription('normal'))
         else:
             pass
 
@@ -234,6 +241,13 @@ class mainWindow():
     def clicked_M4(self, button):
         self.disableOutput()
         self.communicationPort.write("RCL4")
+        time.sleep(0.15)
+        self.updateDisplay()
+
+    # 
+    def clicked_M5(self, button):
+        self.disableOutput()
+        self.communicationPort.write("RCL5")
         time.sleep(0.15)
         self.updateDisplay()
 
@@ -321,7 +335,6 @@ class mainWindow():
         self.outputOnOff = False
         self.communicationPort.write("OUT0")
         time.sleep(0.15)
-        
 
 if __name__ == '__main__':
     main = mainWindow()

@@ -316,9 +316,8 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="btnPowerOnOff">
-                <property name="label" translatable="yes">Power
-On / Off</property>
+              <object class="GtkButton" id="btnM5">
+                <property name="label" translatable="yes">M5</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
