@@ -23,3 +23,5 @@
     -> select set voltage and enter values with numbers on keyboard
     -> select set current and enter values with numbers on keyboard
 
+18-04-2021
+- on application exit disable output
