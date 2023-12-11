@@ -10,10 +10,11 @@
 **Software:**
 - Debian Linux OS
   (Or any other distribution)
-- Raspberry Pi OS
-- Python 2.7.16
-- PySerial
-- PyGObject
+- Raspberry Pi OS 
+- Python 3.11.2 
+- pyserial 3.5 
+- PyGObject  3.46.0 
+- pycairo    1.25.1 
 
 ## Installing PySerial:
 ```
