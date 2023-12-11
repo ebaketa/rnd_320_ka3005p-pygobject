@@ -360,13 +360,11 @@ class mainWindow():
     # write an current user set voltage
     def writeUserSetVoltage(self):
         self.communicationPort.write(bytes('VSET1:', encoding='utf-8') + bytes(self._userSetVoltage, encoding='utf-8'))
-        print(bytes('VSET1:', encoding='utf-8') + bytes(self._userSetVoltage, encoding='utf-8'))
         time.sleep(0.15)
 
     # write an current user set current
     def writeUserSetCurrent(self):
         self.communicationPort.write(bytes('ISET1:', encoding='utf-8') + bytes(self._userSetCurrent, encoding='utf-8'))
-        print(bytes('ISET1:', encoding='utf-8') + bytes(self._userSetCurrent, encoding='utf-8'))
         time.sleep(0.15)
 
     # output disable
