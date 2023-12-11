@@ -25,3 +25,6 @@
 
 18-04-2021
 - on application exit disable output
+
+11-12-2023 
+- application rewriten and adopted for python3 
