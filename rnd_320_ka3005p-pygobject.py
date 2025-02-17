@@ -1,21 +1,20 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
+# *****************************************************************************
 # Program:      KORAD DC POWER SUPPLY CONTROL
 # Author:       Elvis Baketa
 # Device:       RND 320-KA3005P
 # Version:      0.3
-#               Python 3.11.2
-#               pyserial 3.5 
-#               PyGObject  3.46.0 
-#               pycairo    1.25.1 
+# Requirements: Python3, PyGObject, pyserial
+# *****************************************************************************
+
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import gi
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from gi.repository import Gdk
-from gi.repository import Pango
 
 import serial
 import serial.tools.list_ports
@@ -24,7 +23,7 @@ import time
 class mainWindow():
     def __init__(self):
         # application window
-        gladeFile = "rnd_320-ka3005p.glade"
+        gladeFile = "rnd_320_ka3005p-pygobject.glade"
         self.builder = Gtk.Builder()
         self.builder.add_from_file(gladeFile)
         self.builder.connect_signals(self)
