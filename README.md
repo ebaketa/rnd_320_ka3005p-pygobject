@@ -2,7 +2,7 @@
 ## Python Application for controlling KORAD DC Power Supply 
 
 **Hardware:**
-- PC Linux
+- Linux PC
 - Raspberry Pi
 - RND LAB DC POWER SUPPLY
   (RND 320-KA3005P)
@@ -11,30 +11,19 @@
 - Debian Linux OS
   (Or any other distribution)
 - Raspberry Pi OS 
-- Python 3.11.2 
-- pyserial 3.5 
-- PyGObject  3.46.0 
-- pycairo    1.25.1 
+- Python 3 
+- pyserial  
+- PyGObject 
+- pycairo 
 
-## Installing PySerial:
+## Installing Requirments:
 ```
-# python version 2
-sudo apt install python-serial
-
-# python version 3
-sudo apt install python3-serial
-```
-## Installing PyGObject:
-```
-# python version 2
-sudo apt install python-gi python-gi-cairo gir1.2-gtk-3.0
-
-# python version 3
-sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0
+pip3 install pyserial
+pip3 install PyGObject
 ```
 ## Cloning repository and Running program:
 ```
-git clone https://github.com/ebaketa/rnd_320-ka3005p.git
+git clone https://github.com/ebaketa/rnd_320_ka3005p-pygobject.git
 
-python ./rnd_320-ka3005p.py
+python ./rnd_320_-_ka3005p-pygobject.py
 ```
