@@ -15,6 +15,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from gi.repository import Gdk
+# from gi.repository import GLib
 
 import serial
 import serial.tools.list_ports
@@ -38,11 +39,13 @@ class mainWindow():
         self.communicationPort = serial.Serial(self.serial_port_init(), timeout = 0.5)
         print(self.communicationPort.is_open)
 
+
         # application window
         gladeFile = "rnd_320_ka3005p-pygobject.glade"
         self.builder = Gtk.Builder()
         self.builder.add_from_file(gladeFile)
         self.builder.connect_signals(self)
+
         self.window = self.builder.get_object("mainWindow")
         # set window position
         self.window.set_position(Gtk.WindowPosition.CENTER)
@@ -53,12 +56,17 @@ class mainWindow():
         self.window.connect("delete-event", self.on_delete)
         self.window.connect("realize", self.on_realize)
 
+
+        # GUI labels
+        self.labels = {
+            "lblDisplayVoltage": self.builder.get_object("lblDisplayVoltage"),
+            "lblDisplayCurrent": self.builder.get_object("lblDisplayCurrent"),
+            "lblUserSetVoltage": self.builder.get_object("lblUserSetVoltage"),
+            "lblUserSetCurrent": self.builder.get_object("lblUserSetCurrent"),
+            "lblSerialPortStatus": self.builder.get_object("lblSerialPortStatus"),
+        }
+
         # gui interface
-        self.lblDisplayVoltage = self.builder.get_object("lblDisplayVoltage")
-        self.lblDisplayCurrent = self.builder.get_object("lblDisplayCurrent")
-        self.lblUserSetVoltage = self.builder.get_object("lblUserSetVoltage")
-        self.lblUserSetCurrent = self.builder.get_object("lblUserSetCurrent")
-        self.lblSerialPortStatus = self.builder.get_object("lblSerialPortStatus")
         self.btnN0 = self.builder.get_object("btnN0")
         self.btnN1 = self.builder.get_object("btnN1")
         self.btnN2 = self.builder.get_object("btnN2")
@@ -103,42 +111,16 @@ class mainWindow():
         self.btnOutputOnOff.connect("clicked", self.clicked_outputOnOff)
 
 
-        if self.communicationPort and self.communicationPort.is_open:
-            try:
-                # Send command to get device identification
-                self.communicationPort.write(b'*IDN?')
-                time.sleep(0.15)
-                
-                # Read device identification
-                try:
-                    response = self.communicationPort.read(self.communicationPort.in_waiting).decode('utf-8').strip()
-                except serial.SerialException as e:
-                    response = f"Serial communication error: {e}"
-                except UnicodeDecodeError:
-                    response = "Received data could not be decoded properly."
-
-                # Update UI label
-                self.lblSerialPortStatus.set_text(f"{response} connected via communication port: {self.communicationPort.name}")
-            
-            except serial.SerialException as e:
-                self.lblSerialPortStatus.set_text(f"Serial communication error: {e}")
-        else:
-            self.lblSerialPortStatus.set_text("The device is not connected or not turned on!") 
-
-        '''
-        if(self.communicationPort.is_open):
-            # send command to get device identification
-            self.communicationPort.write(bytes('*IDN?', encoding='utf-8'))
-            time.sleep(0.15)
-            # read device identification
-            self._getDeviceIdentification = self.communicationPort.read(self.communicationPort.in_waiting)
-            self.lblSerialPortStatus.set_text(self._getDeviceIdentification.decode('utf-8') + ' connected via communication port: ' + self.communicationPort.name)
-        else:
-            self.lblSerialPortStatus.set_text("The device is not connected or not turned on!") 
-        '''
+        # Start periodic updates every 1000ms (1 second)
+        # GLib.timeout_add(1000, self.updateDisplay)
 
         # show application window
         # self.window.show()
+
+        if(self.communicationPort.is_open):
+            self.labels["lblSerialPortStatus"].set_text(f"{self.getDeviceID().decode().strip()} connected via communication port: {self.communicationPort.name}")
+        else:
+            self.labels["lblSerialPortStatus"].set_text('The device is not connected or not turned on!')
 
     # check if device is connected and return port name
     def serial_port_init(self):
@@ -173,6 +155,7 @@ class mainWindow():
         # update display
         self.updateDisplay()
         # print(self.getDeviceID())
+        # pass
 
     # function that resolve key press events
     def on_key_press_event(self, widget, event):
@@ -229,18 +212,20 @@ class mainWindow():
 
     # update display
     def updateDisplay(self):
+        # self.labels["lblSerialPortStatus"]
         if(self.powerOnOff == True and self.outputOnOff == True):
-            self.lblDisplayVoltage.set_text("{:05.2f}".format(self.actualOutputVoltage()) + "V")
-            self.lblDisplayCurrent.set_text("{:05.3f}".format(self.actualOutputCurrent()) + "A")
-            self.lblUserSetVoltage.set_text("VSET: " + "{:05.2f}".format(self.userSetVoltage()) + "V")
-            self.lblUserSetCurrent.set_text("ISET: " + "{:05.3f}".format(self.userSetCurrent()) + "A")
+            self.labels["lblDisplayVoltage"].set_text("{:05.2f}".format(self.actualOutputVoltage()) + "V")
+            self.labels["lblDisplayCurrent"].set_text("{:05.3f}".format(self.actualOutputCurrent()) + "A")
+            self.labels["lblUserSetVoltage"].set_text("VSET: " + "{:05.2f}".format(self.userSetVoltage()) + "V")
+            self.labels["lblUserSetCurrent"].set_text("ISET: " + "{:05.3f}".format(self.userSetCurrent()) + "A")
         elif(self.powerOnOff == True and self.outputOnOff == False):
-            self.lblDisplayVoltage.set_text("{:05.2f}".format(self.userSetVoltage()) + "V")
-            self.lblDisplayCurrent.set_text("{:05.3f}".format(self.userSetCurrent()) + "A")
-            self.lblUserSetVoltage.set_text("VSET: " + "{:05.2f}".format(self.userSetVoltage()) + "V")
-            self.lblUserSetCurrent.set_text("ISET: " + "{:05.3f}".format(self.userSetCurrent()) + "A")
+            self.labels["lblDisplayVoltage"].set_text("{:05.2f}".format(self.userSetVoltage()) + "V")
+            self.labels["lblDisplayCurrent"].set_text("{:05.3f}".format(self.userSetCurrent()) + "A")
+            self.labels["lblUserSetVoltage"].set_text("VSET: " + "{:05.2f}".format(self.userSetVoltage()) + "V")
+            self.labels["lblUserSetCurrent"].set_text("ISET: " + "{:05.3f}".format(self.userSetCurrent()) + "A")
         else:
             print("Unknown error!")
+        return True
     #
     def on_delete(self, widget, data=None):
         self.disableOutput()
@@ -265,7 +250,7 @@ class mainWindow():
             self._userSetVoltage = float(self.temp_setVoltage)
             self._userSetVoltage = self._userSetVoltage / 100
             self._userSetVoltage = ("{:05.2f}".format(self._userSetVoltage))
-            self.lblDisplayVoltage.set_text(self._userSetVoltage + "V")
+            self.labels["lblDisplayVoltage"].set_text(self._userSetVoltage + "V")
             if(len(self.temp_setVoltage) == 4):
                 self.writeUserSetVoltage()
                 self.updateDisplay()
@@ -276,7 +261,7 @@ class mainWindow():
             self._userSetCurrent = float(self.temp_setCurrent)
             self._userSetCurrent = self._userSetCurrent / 1000
             self._userSetCurrent = ("{:05.3f}".format(self._userSetCurrent))
-            self.lblDisplayCurrent.set_text(self._userSetCurrent + "A")
+            self.labels["lblDisplayCurrent"].set_text(self._userSetCurrent + "A")
             if(len(self.temp_setCurrent) == 4):
                 self.writeUserSetCurrent()
                 self.updateDisplay()
