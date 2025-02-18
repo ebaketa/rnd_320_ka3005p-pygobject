@@ -34,7 +34,10 @@ class mainWindow():
         self.temp_setVoltage = ''
         self.temp_setCurrent = ''
 
-        self.communicationPort = serial.Serial(self.serial_port_init())
+        # initialize communication port
+        self.communicationPort = serial.Serial(self.serial_port_init(), timeout = 0.5)
+        print(self.communicationPort.is_open)
+
         # application window
         gladeFile = "rnd_320_ka3005p-pygobject.glade"
         self.builder = Gtk.Builder()
@@ -76,6 +79,8 @@ class mainWindow():
         self.btnOVP = self.builder.get_object("btnOVP")
         self.btnOCP = self.builder.get_object("btnOCP")
         self.btnOutputOnOff = self.builder.get_object("btnOutputOnOff")
+
+
         self.btnN0.connect("clicked", self.clicked_Numeric, 0)
         self.btnN1.connect("clicked", self.clicked_Numeric, 1)
         self.btnN2.connect("clicked", self.clicked_Numeric, 2)
@@ -96,6 +101,41 @@ class mainWindow():
         self.btnOVP.connect("clicked", self.clicked_OVP)
         self.btnOCP.connect("clicked", self.clicked_OCP)
         self.btnOutputOnOff.connect("clicked", self.clicked_outputOnOff)
+
+
+        if self.communicationPort and self.communicationPort.is_open:
+            try:
+                # Send command to get device identification
+                self.communicationPort.write(b'*IDN?')
+                time.sleep(0.15)
+                
+                # Read device identification
+                try:
+                    response = self.communicationPort.read(self.communicationPort.in_waiting).decode('utf-8').strip()
+                except serial.SerialException as e:
+                    response = f"Serial communication error: {e}"
+                except UnicodeDecodeError:
+                    response = "Received data could not be decoded properly."
+
+                # Update UI label
+                self.lblSerialPortStatus.set_text(f"{response} connected via communication port: {self.communicationPort.name}")
+            
+            except serial.SerialException as e:
+                self.lblSerialPortStatus.set_text(f"Serial communication error: {e}")
+        else:
+            self.lblSerialPortStatus.set_text("The device is not connected or not turned on!") 
+
+        '''
+        if(self.communicationPort.is_open):
+            # send command to get device identification
+            self.communicationPort.write(bytes('*IDN?', encoding='utf-8'))
+            time.sleep(0.15)
+            # read device identification
+            self._getDeviceIdentification = self.communicationPort.read(self.communicationPort.in_waiting)
+            self.lblSerialPortStatus.set_text(self._getDeviceIdentification.decode('utf-8') + ' connected via communication port: ' + self.communicationPort.name)
+        else:
+            self.lblSerialPortStatus.set_text("The device is not connected or not turned on!") 
+        '''
 
         # show application window
         # self.window.show()
@@ -123,6 +163,10 @@ class mainWindow():
                     return serialPort.device
         elif(self.serialPortAvailable == False):
             self.lblSerialPortStatus.set_text('Device not connected!')
+
+    def send_command(self, cmd):
+        self.communicationPort.write(bytes(cmd, encoding='utf-8'))
+        return self.communicationPort.read(self.communicationPort.in_waiting).decode().strip()
 
     # function to prepare the program for start
     def on_realize(self, widget, data=None):

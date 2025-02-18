@@ -56,7 +56,7 @@
             <property name="margin-left">10</property>
             <property name="margin-right">10</property>
             <property name="margin-bottom">5</property>
-            <property name="label" translatable="yes">Voltage Set: 00.00V</property>
+            <property name="label" translatable="yes">VSET: 00.00V</property>
             <attributes>
               <attribute name="font-desc" value="Inconsolata Bold 20"/>
             </attributes>
@@ -73,7 +73,7 @@
             <property name="margin-left">10</property>
             <property name="margin-right">10</property>
             <property name="margin-bottom">5</property>
-            <property name="label" translatable="yes">Current Set: 0.000A</property>
+            <property name="label" translatable="yes">ISET: 0.000A</property>
             <attributes>
               <attribute name="font-desc" value="Inconsolata Bold 20"/>
             </attributes>
