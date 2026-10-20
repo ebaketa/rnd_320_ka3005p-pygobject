@@ -16,14 +16,23 @@
 - PyGObject 
 - pycairo 
 
-## Installing Requirments:
+## Installing Requirements:
+On Debian and Raspberry Pi OS:
 ```
-pip3 install pyserial
-pip3 install PyGObject
+sudo apt install python3-gi gir1.2-gtk-3.0 python3-serial
+```
+Or with pip:
+```
+pip3 install -r requirements.txt
+```
+To access the serial port without root, add your user to the `dialout` group and log in again:
+```
+sudo usermod -a -G dialout $USER
 ```
 ## Cloning repository and Running program:
 ```
 git clone https://github.com/ebaketa/rnd_320_ka3005p-pygobject.git
-
-python ./rnd_320_-_ka3005p-pygobject.py
+cd rnd_320_ka3005p-pygobject
+python3 rnd_320_ka3005p-pygobject.py
 ```
+Run the program from its directory and switch the power supply on before starting it.
