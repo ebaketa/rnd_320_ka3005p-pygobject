@@ -1,0 +1,4 @@
+.venv
+__pycache__/
+rnd_320_ka3005p-pygobject.code-workspace
+test_code.txt
