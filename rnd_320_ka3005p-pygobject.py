@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 # *****************************************************************************
 # Program:      KORAD DC POWER SUPPLY CONTROL
 # Author:       Elvis Baketa
@@ -6,45 +9,172 @@
 # Requirements: Python3, PyGObject, pyserial
 # *****************************************************************************
 
-
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+import os
+import queue
+import threading
+import time
+import traceback
+from collections import namedtuple
 
 import gi
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from gi.repository import Gdk
-# from gi.repository import GLib
+from gi.repository import GLib
 
 import serial
-import serial.tools.list_ports
-import time
+
+import korad
+
+GLADE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rnd_320_ka3005p-pygobject.glade")
+
+# pause between two display updates in seconds
+UPDATE_INTERVAL = 0.5
+
+# how long a message replaces the connection status in seconds
+MESSAGE_TIMEOUT = 3
+
+# number of memory slots of the device
+MEMORY_SLOTS = 5
+
+# active buttons are green, the value being entered is orange
+CSS = b"""
+button.active {
+    background-image: none;
+    background-color: #2e7d32;
+    color: #ffffff;
+}
+label.editing {
+    color: #e65100;
+}
+"""
+
+# keyboard digits and keypad digits
+DIGIT_KEYS = {}
+for n in range(10):
+    DIGIT_KEYS[getattr(Gdk, f"KEY_{n}")] = n
+    DIGIT_KEYS[getattr(Gdk, f"KEY_KP_{n}")] = n
+
+# how a voltage or current is entered: digits fill the value from the right,
+# e.g. 1,2,3,4 gives 12.34V; the value is sent after the last digit or Enter
+EntrySetting = namedtuple('EntrySetting', ['label', 'button', 'digits', 'scale', 'fmt', 'unit', 'maximum'])
+ENTRY_SETTINGS = {
+    'voltage': EntrySetting("lblDisplayVoltage", "btnSetVoltage", 4, 100, "{:05.2f}", "V", korad.MAX_VOLTAGE),
+    'current': EntrySetting("lblDisplayCurrent", "btnSetCurrent", 4, 1000, "{:05.3f}", "A", korad.MAX_CURRENT),
+}
+
+# values read from the device in one update, commandsDone is the number of
+# commands that were executed before the reading started
+Reading = namedtuple('Reading', ['state', 'setVoltage', 'setCurrent', 'outputVoltage', 'outputCurrent', 'commandsDone'])
+
+# background thread that owns the device: it runs queued commands and reads
+# the device periodically, results are passed to the GUI thread with GLib.idle_add
+class DeviceWorker(threading.Thread):
+    # marks the end of the command queue
+    STOP = object()
+
+    def __init__(self, psu, onReading, onConnectionLost):
+        super().__init__(daemon=True)
+        self.psu = psu
+        self.onReading = onReading
+        self.onConnectionLost = onConnectionLost
+        self.commands = queue.Queue()
+        self.commandsSubmitted = 0
+        self.commandsDone = 0
+        self.running = True
+
+    # queue a function that is called with the device as argument
+    def submit(self, command):
+        self.commandsSubmitted += 1
+        self.commands.put(command)
+
+    # read the device as soon as possible
+    def requestUpdate(self):
+        self.submit(lambda psu: None)
+
+    # a reading is outdated if a command was submitted after it started
+    def isOutdated(self, reading):
+        return reading.commandsDone < self.commandsSubmitted
+
+    # finish queued commands and stop the thread
+    def stop(self):
+        self.running = False
+        self.commands.put(self.STOP)
+
+    def run(self):
+        nextUpdate = 0
+        while(True):
+            try:
+                command = self.commands.get(timeout=max(0, nextUpdate - time.monotonic()))
+            except queue.Empty:
+                command = None
+            if(command is self.STOP):
+                return
+            try:
+                if(command is not None):
+                    try:
+                        command(self.psu)
+                    finally:
+                        self.commandsDone += 1
+                # no need to read the device while stopping
+                if(self.running):
+                    GLib.idle_add(self.onReading, self.read())
+            except korad.ConnectionLostError as error:
+                GLib.idle_add(self.onConnectionLost, error)
+                return
+            except Exception:
+                traceback.print_exc()
+            nextUpdate = time.monotonic() + UPDATE_INTERVAL
+
+    def read(self):
+        commandsDone = self.commandsDone
+        state = self.psu.get_state()
+        setVoltage = self.psu.get_set_voltage()
+        setCurrent = self.psu.get_set_current()
+        if(state is not None and state.output):
+            outputVoltage = self.psu.get_output_voltage()
+            outputCurrent = self.psu.get_output_current()
+        else:
+            outputVoltage = None
+            outputCurrent = None
+        return Reading(state, setVoltage, setCurrent, outputVoltage, outputCurrent, commandsDone)
 
 class mainWindow():
     def __init__(self):
         # initialize global variables
-        self.powerOnOff = False
         self.outputOnOff = False
         self.ocpEnable = False
         self.ovpEnable = False
-        self._userSetVoltage = 0.00
-        self._userSetCurrent = 0.000
-        self._activeSetVoltage = False
-        self._activeSetCurrent = False
-        self.temp_setVoltage = ''
-        self.temp_setCurrent = ''
+        # 'voltage' or 'current' while the user enters a value, otherwise None
+        self.entryMode = None
+        self.entryDigits = ''
+        # waiting for the memory slot after the M key
+        self.memorySelect = False
+        self.lastReading = None
+        self.controlsEnabled = False
+        self.connectionMessage = ''
+        self.messageTimer = None
+        self.worker = None
 
         # initialize communication port
-        self.communicationPort = serial.Serial(self.serial_port_init(), timeout = 0.5)
-        print(self.communicationPort.is_open)
+        self.psu = None
+        portName = korad.find_port()
+        if(portName is not None):
+            try:
+                self.psu = korad.KoradPSU(portName)
+            except serial.SerialException as error:
+                print(f"Cannot open communication port {portName}: {error}")
 
 
         # application window
-        gladeFile = "rnd_320_ka3005p-pygobject.glade"
         self.builder = Gtk.Builder()
-        self.builder.add_from_file(gladeFile)
+        self.builder.add_from_file(GLADE_FILE)
         self.builder.connect_signals(self)
+
+        cssProvider = Gtk.CssProvider()
+        cssProvider.load_from_data(CSS)
+        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), cssProvider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
         self.window = self.builder.get_object("mainWindow")
         # set window position
@@ -54,7 +184,6 @@ class mainWindow():
         self.window.connect("key-press-event",self.on_key_press_event)
         self.window.connect("destroy", Gtk.main_quit)
         self.window.connect("delete-event", self.on_delete)
-        self.window.connect("realize", self.on_realize)
 
 
         # GUI labels
@@ -88,6 +217,15 @@ class mainWindow():
         self.btnOCP = self.builder.get_object("btnOCP")
         self.btnOutputOnOff = self.builder.get_object("btnOutputOnOff")
 
+        # buttons that are usable only while the device is connected
+        self.controls = [
+            self.btnN0, self.btnN1, self.btnN2, self.btnN3, self.btnN4,
+            self.btnN5, self.btnN6, self.btnN7, self.btnN8, self.btnN9,
+            self.btnSetVoltage, self.btnSetCurrent,
+            self.btnM1, self.btnM2, self.btnM3, self.btnM4, self.btnM5,
+            self.btnOVP, self.btnOCP, self.btnOutputOnOff,
+        ]
+
 
         self.btnN0.connect("clicked", self.clicked_Numeric, 0)
         self.btnN1.connect("clicked", self.clicked_Numeric, 1)
@@ -101,297 +239,288 @@ class mainWindow():
         self.btnN9.connect("clicked", self.clicked_Numeric, 9)
         self.btnSetVoltage.connect("clicked", self.clicked_setVoltage)
         self.btnSetCurrent.connect("clicked", self.clicked_setCurrent)
-        self.btnM1.connect("clicked", self.clicked_M1)
-        self.btnM2.connect("clicked", self.clicked_M2)
-        self.btnM3.connect("clicked", self.clicked_M3)
-        self.btnM4.connect("clicked", self.clicked_M4)
-        self.btnM5.connect("clicked", self.clicked_M5)
+        self.btnM1.connect("clicked", self.clicked_Memory, 1)
+        self.btnM2.connect("clicked", self.clicked_Memory, 2)
+        self.btnM3.connect("clicked", self.clicked_Memory, 3)
+        self.btnM4.connect("clicked", self.clicked_Memory, 4)
+        self.btnM5.connect("clicked", self.clicked_Memory, 5)
         self.btnOVP.connect("clicked", self.clicked_OVP)
         self.btnOCP.connect("clicked", self.clicked_OCP)
         self.btnOutputOnOff.connect("clicked", self.clicked_outputOnOff)
 
+        # keyboard shortcuts, digits are handled separately
+        self.keyActions = {
+            Gdk.KEY_o: lambda: self.clicked_outputOnOff(None),
+            Gdk.KEY_v: lambda: self.clicked_setVoltage(None),
+            Gdk.KEY_a: lambda: self.clicked_setCurrent(None),
+            Gdk.KEY_m: self.startMemorySelect,
+            Gdk.KEY_u: lambda: self.worker.requestUpdate(),
+            Gdk.KEY_Return: self.confirmEntry,
+            Gdk.KEY_KP_Enter: self.confirmEntry,
+            Gdk.KEY_Escape: self.cancelEntry,
+            Gdk.KEY_BackSpace: self.deleteDigit,
+        }
 
-        # Start periodic updates every 1000ms (1 second)
-        # GLib.timeout_add(1000, self.updateDisplay)
+        self.setConnectedState(False, 'The device is not connected or not turned on!')
+        self.initDevice()
 
-        # show application window
-        # self.window.show()
+    # check if communication with the device is possible
+    def isConnected(self):
+        return self.controlsEnabled
 
-        if(self.communicationPort.is_open):
-            self.labels["lblSerialPortStatus"].set_text(f"{self.getDeviceID().decode().strip()} connected via communication port: {self.communicationPort.name}")
+    # enable or disable controls and show connection status
+    def setConnectedState(self, connected, message):
+        self.controlsEnabled = connected
+        for control in self.controls:
+            control.set_sensitive(connected)
+        self.connectionMessage = message
+        self.restoreStatus()
+
+    # show a message in the status line for a few seconds
+    def showMessage(self, message, timeout=MESSAGE_TIMEOUT):
+        if(self.messageTimer is not None):
+            GLib.source_remove(self.messageTimer)
+        self.labels["lblSerialPortStatus"].set_text(message)
+        self.messageTimer = GLib.timeout_add_seconds(timeout, self.restoreStatus)
+
+    # show the connection status again
+    def restoreStatus(self):
+        if(self.messageTimer is not None):
+            GLib.source_remove(self.messageTimer)
+            self.messageTimer = None
+        self.labels["lblSerialPortStatus"].set_text(self.connectionMessage)
+        return False
+
+    # add or remove a CSS class of a widget
+    def setStyle(self, widget, styleClass, enabled):
+        if(enabled):
+            widget.get_style_context().add_class(styleClass)
         else:
-            self.labels["lblSerialPortStatus"].set_text('The device is not connected or not turned on!')
+            widget.get_style_context().remove_class(styleClass)
 
-    # check if device is connected and return port name
-    def serial_port_init(self):
-        # get list of serial ports
-        serialPortList = serial.tools.list_ports.comports()
+    # show output, OVP and OCP state on their buttons
+    def updateButtonStates(self):
+        self.setStyle(self.btnOutputOnOff, "active", self.outputOnOff)
+        self.setStyle(self.btnOVP, "active", self.ovpEnable)
+        self.setStyle(self.btnOCP, "active", self.ocpEnable)
 
-        # get count of available serial ports
-        serialPortCount = len(serialPortList)
+    # disable controls after a communication error, the port is already closed
+    def connectionLost(self, error):
+        if(not self.controlsEnabled):
+            return
+        print(f"Communication error: {error}")
+        self.setConnectedState(False, 'Connection to the device lost!')
+        self.cancelEntry()
+        self.memorySelect = False
+        self.lastReading = None
+        self.outputOnOff = False
+        self.ovpEnable = False
+        self.ocpEnable = False
+        self.updateButtonStates()
+        # do not leave stale values on the display
+        self.labels["lblDisplayVoltage"].set_text("--V")
+        self.labels["lblDisplayCurrent"].set_text("--A")
+        self.labels["lblUserSetVoltage"].set_text("VSET: --V")
+        self.labels["lblUserSetCurrent"].set_text("ISET: --A")
 
-        # set serial port available
-        if(serialPortCount > 0):
-            self.serialPortAvailable = True
-        else:
-            self.serialPortAvailable = False
+    # identify the device, enable controls and start periodic updates
+    def initDevice(self):
+        if(self.psu is None):
+            return
+        try:
+            deviceID = self.psu.identify()
+        except korad.ConnectionLostError as error:
+            print(f"Communication error: {error}")
+            return
+        self.setConnectedState(True, f"{deviceID or 'Device'} connected via communication port: {self.psu.name}")
+        self.worker = DeviceWorker(self.psu, self.updateDisplay, self.connectionLost)
+        self.worker.start()
 
-        if(self.serialPortAvailable == True):
-            # check all listed ports
-            for serialPort in serialPortList:
-                # check if valid serial port exist (VID=1046, PID=20497)
-                if(serialPort.vid == 1046 and serialPort.pid == 20497):
-                    self.powerOnOff = True
-                    return serialPort.device
-        elif(self.serialPortAvailable == False):
-            self.lblSerialPortStatus.set_text('Device not connected!')
-
-    def send_command(self, cmd):
-        self.communicationPort.write(bytes(cmd, encoding='utf-8'))
-        return self.communicationPort.read(self.communicationPort.in_waiting).decode().strip()
-
-    # function to prepare the program for start
-    def on_realize(self, widget, data=None):
-        # update display
-        self.updateDisplay()
-        # print(self.getDeviceID())
-        # pass
+    # queue a command for the device
+    def sendCommand(self, command):
+        if(self.isConnected()):
+            self.worker.submit(command)
 
     # function that resolve key press events
     def on_key_press_event(self, widget, event):
-        if(event.keyval == Gdk.KEY_KP_0 or event.keyval == Gdk.KEY_0):
-            self.clicked_Numeric("clicked", 0)
-        elif(event.keyval == Gdk.KEY_KP_1 or event.keyval == Gdk.KEY_1):
-            self.clicked_Numeric("clicked", 1)
-        elif(event.keyval == Gdk.KEY_KP_2 or event.keyval == Gdk.KEY_2):
-            self.clicked_Numeric("clicked", 2)
-        elif(event.keyval == Gdk.KEY_KP_3 or event.keyval == Gdk.KEY_3):
-            self.clicked_Numeric("clicked", 3)
-        elif(event.keyval == Gdk.KEY_KP_4 or event.keyval == Gdk.KEY_4):
-            self.clicked_Numeric("clicked", 4)
-        elif(event.keyval == Gdk.KEY_KP_5 or event.keyval == Gdk.KEY_5):
-            self.clicked_Numeric("clicked", 5)
-        elif(event.keyval == Gdk.KEY_KP_6 or event.keyval == Gdk.KEY_6):
-            self.clicked_Numeric("clicked", 6)
-        elif(event.keyval == Gdk.KEY_KP_7 or event.keyval == Gdk.KEY_7):
-            self.clicked_Numeric("clicked", 7)
-        elif(event.keyval == Gdk.KEY_KP_8 or event.keyval == Gdk.KEY_8):
-            self.clicked_Numeric("clicked", 8)
-        elif(event.keyval == Gdk.KEY_KP_9 or event.keyval == Gdk.KEY_9):
-            self.clicked_Numeric("clicked", 9)
-        elif(event.keyval == Gdk.KEY_o):
-            self.clicked_outputOnOff("clicked")
-        elif(event.keyval == Gdk.KEY_v):
-            self.clicked_setVoltage("clicked")
-        elif(event.keyval == Gdk.KEY_a):
-            self.clicked_setCurrent("clicked")
-        elif(event.keyval == Gdk.KEY_m and event.keyval == Gdk.KEY_1):
-            self.clicked_setCurrent("clicked")
-        elif(event.keyval == Gdk.KEY_u):
-            self.updateDisplay()
-
-        """"
-        print("Key press on widget: ", widget)
-        print("          Modifiers: ", event.state)
-        print("      Key val, name: ", event.keyval, Gdk.keyval_name(event.keyval))
-        """
-
-    # device identification
-    def getDeviceID(self):
-        self.communicationPort.write(bytes('*IDN?', encoding='utf-8'))
-        time.sleep(0.1)
-        deviceID = self.communicationPort.read(self.communicationPort.in_waiting)
-        return deviceID
-
-    # device status
-    def getDeviceStatus(self):
-        self.communicationPort.write(bytes('STATUS?', encoding='utf-8'))
-        time.sleep(0.1)
-        deviceStatus = self.communicationPort.read(self.communicationPort.in_waiting)
-        return deviceStatus
-
-    # update display
-    def updateDisplay(self):
-        # self.labels["lblSerialPortStatus"]
-        if(self.powerOnOff == True and self.outputOnOff == True):
-            self.labels["lblDisplayVoltage"].set_text("{:05.2f}".format(self.actualOutputVoltage()) + "V")
-            self.labels["lblDisplayCurrent"].set_text("{:05.3f}".format(self.actualOutputCurrent()) + "A")
-            self.labels["lblUserSetVoltage"].set_text("VSET: " + "{:05.2f}".format(self.userSetVoltage()) + "V")
-            self.labels["lblUserSetCurrent"].set_text("ISET: " + "{:05.3f}".format(self.userSetCurrent()) + "A")
-        elif(self.powerOnOff == True and self.outputOnOff == False):
-            self.labels["lblDisplayVoltage"].set_text("{:05.2f}".format(self.userSetVoltage()) + "V")
-            self.labels["lblDisplayCurrent"].set_text("{:05.3f}".format(self.userSetCurrent()) + "A")
-            self.labels["lblUserSetVoltage"].set_text("VSET: " + "{:05.2f}".format(self.userSetVoltage()) + "V")
-            self.labels["lblUserSetCurrent"].set_text("ISET: " + "{:05.3f}".format(self.userSetCurrent()) + "A")
-        else:
-            print("Unknown error!")
+        if(not self.isConnected()):
+            return False
+        # leave shortcuts like Ctrl+Q or Alt+F4 to the window manager
+        if(event.state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)):
+            return False
+        digit = DIGIT_KEYS.get(event.keyval)
+        # M followed by 1-5 recalls a memory, any other key cancels it
+        if(self.memorySelect):
+            self.memorySelect = False
+            self.restoreStatus()
+            if(digit is not None and 1 <= digit <= MEMORY_SLOTS):
+                self.clicked_Memory(None, digit)
+            return True
+        if(digit is not None):
+            self.clicked_Numeric(None, digit)
+            return True
+        action = self.keyActions.get(event.keyval)
+        if(action is None):
+            return False
+        action()
         return True
+
+    # format a value for the display, or a placeholder if it is not available
+    def formatValue(self, value, fmt, unit):
+        if(value is None):
+            return "--" + unit
+        return fmt.format(value) + unit
+
+    # show values read by the worker, called in the GUI thread
+    def updateDisplay(self, reading):
+        if(not self.isConnected()):
+            return
+        # a newer reading follows, this one could undo the last button press
+        if(self.worker.isOutdated(reading)):
+            return
+        self.lastReading = reading
+        # output, OVP and OCP can also be changed on the front panel
+        if(reading.state is not None):
+            self.outputOnOff = reading.state.output
+            self.ovpEnable = reading.state.ovp
+            self.ocpEnable = reading.state.ocp
+        self.updateButtonStates()
+        if(self.outputOnOff == True):
+            displayVoltage = reading.outputVoltage
+            displayCurrent = reading.outputCurrent
+        else:
+            displayVoltage = reading.setVoltage
+            displayCurrent = reading.setCurrent
+        # keep the value the user is entering
+        if(self.entryMode != 'voltage'):
+            self.labels["lblDisplayVoltage"].set_text(self.formatValue(displayVoltage, "{:05.2f}", "V"))
+        if(self.entryMode != 'current'):
+            self.labels["lblDisplayCurrent"].set_text(self.formatValue(displayCurrent, "{:05.3f}", "A"))
+        self.labels["lblUserSetVoltage"].set_text("VSET: " + self.formatValue(reading.setVoltage, "{:05.2f}", "V"))
+        self.labels["lblUserSetCurrent"].set_text("ISET: " + self.formatValue(reading.setCurrent, "{:05.3f}", "A"))
     #
     def on_delete(self, widget, data=None):
-        self.disableOutput()
-        # only close port if it is available
-        if(self.serialPortAvailable == True and self.communicationPort.is_open):
-            self.communicationPort.close()
+        if(self.worker is not None):
+            # disable output before closing, queued after any pending commands
+            self.sendCommand(lambda psu: psu.set_output(False))
+            self.worker.stop()
+            self.worker.join(timeout=3)
+        if(self.psu is not None):
+            self.psu.close()
 
-    # 
-    def clicked_setVoltage(self, button):
-        self._userSetVoltage = 0.00
-        self._activeSetVoltage = not self._activeSetVoltage
+    # start entering a voltage or current, the same button again cancels it
+    def startEntry(self, mode):
+        if(not self.isConnected()):
+            return
+        if(self.entryMode == mode):
+            self.cancelEntry()
+            return
+        self.cancelEntry()
+        setting = ENTRY_SETTINGS[mode]
+        self.entryMode = mode
+        self.entryDigits = ''
+        self.setStyle(self.labels[setting.label], "editing", True)
+        self.setStyle(self.builder.get_object(setting.button), "active", True)
+        self.showEntry()
 
-    # 
-    def clicked_setCurrent(self, button):
-        self._userSetCurrent = 0.000
-        self._activeSetCurrent = not self._activeSetCurrent
+    # value of the digits entered so far
+    def entryValue(self):
+        return int(self.entryDigits or '0') / ENTRY_SETTINGS[self.entryMode].scale
 
-    # 
-    def clicked_Numeric(self, button, data):
-        if(self._activeSetVoltage == True):
-            self.temp_setVoltage = self.temp_setVoltage + str(data)
-            self._userSetVoltage = float(self.temp_setVoltage)
-            self._userSetVoltage = self._userSetVoltage / 100
-            self._userSetVoltage = ("{:05.2f}".format(self._userSetVoltage))
-            self.labels["lblDisplayVoltage"].set_text(self._userSetVoltage + "V")
-            if(len(self.temp_setVoltage) == 4):
-                self.writeUserSetVoltage()
-                self.updateDisplay()
-                self._activeSetVoltage = False
-                self.temp_setVoltage = ''
-        elif(self._activeSetCurrent == True):
-            self.temp_setCurrent = self.temp_setCurrent + str(data)
-            self._userSetCurrent = float(self.temp_setCurrent)
-            self._userSetCurrent = self._userSetCurrent / 1000
-            self._userSetCurrent = ("{:05.3f}".format(self._userSetCurrent))
-            self.labels["lblDisplayCurrent"].set_text(self._userSetCurrent + "A")
-            if(len(self.temp_setCurrent) == 4):
-                self.writeUserSetCurrent()
-                self.updateDisplay()
-                self._activeSetCurrent = False
-                self.temp_setCurrent = ''
+    def showEntry(self):
+        setting = ENTRY_SETTINGS[self.entryMode]
+        self.labels[setting.label].set_text(setting.fmt.format(self.entryValue()) + setting.unit)
+
+    # stop entering a value, the display shows the device values again
+    def cancelEntry(self):
+        if(self.entryMode is None):
+            return
+        setting = ENTRY_SETTINGS[self.entryMode]
+        self.setStyle(self.labels[setting.label], "editing", False)
+        self.setStyle(self.builder.get_object(setting.button), "active", False)
+        self.entryMode = None
+        self.entryDigits = ''
+        if(self.lastReading is not None):
+            self.updateDisplay(self.lastReading)
+
+    # send the entered value to the device if it is within the device limits
+    def confirmEntry(self):
+        if(self.entryMode is None or self.entryDigits == ''):
+            self.cancelEntry()
+            return
+        setting = ENTRY_SETTINGS[self.entryMode]
+        value = self.entryValue()
+        mode = self.entryMode
+        self.cancelEntry()
+        if(value > setting.maximum):
+            self.showMessage(f"Value out of range, maximum is {setting.fmt.format(setting.maximum)}{setting.unit}")
+            return
+        if(mode == 'voltage'):
+            self.sendCommand(lambda psu: psu.set_voltage(value))
         else:
-            pass
+            self.sendCommand(lambda psu: psu.set_current(value))
+        # show the new value until the device confirms it
+        self.labels[setting.label].set_text(setting.fmt.format(value) + setting.unit)
 
-    # 
-    def clicked_M1(self, button):
-        self.disableOutput()
-        self.communicationPort.write(bytes('RCL1', encoding='utf-8'))
-        time.sleep(0.15)
-        self.updateDisplay()
+    def deleteDigit(self):
+        if(self.entryMode is None):
+            return
+        self.entryDigits = self.entryDigits[:-1]
+        self.showEntry()
 
-    # 
-    def clicked_M2(self, button):
-        self.disableOutput()
-        self.communicationPort.write(bytes('RCL2', encoding='utf-8'))
-        time.sleep(0.15)
-        self.updateDisplay()
+    # wait for the memory slot number on the keyboard
+    def startMemorySelect(self):
+        self.memorySelect = True
+        self.showMessage(f"Recall memory: press 1-{MEMORY_SLOTS}, any other key cancels")
 
-    # 
-    def clicked_M3(self, button):
-        self.disableOutput()
-        self.communicationPort.write(bytes('RCL3', encoding='utf-8'))
-        time.sleep(0.15)
-        self.updateDisplay()
+    #
+    def clicked_setVoltage(self, button):
+        self.startEntry('voltage')
 
-    # 
-    def clicked_M4(self, button):
-        self.disableOutput()
-        self.communicationPort.write(bytes('RCL4', encoding='utf-8'))
-        time.sleep(0.15)
-        self.updateDisplay()
+    #
+    def clicked_setCurrent(self, button):
+        self.startEntry('current')
 
-    # 
-    def clicked_M5(self, button):
-        self.disableOutput()
-        self.communicationPort.write(bytes('RCL5', encoding='utf-8'))
-        time.sleep(0.15)
-        self.updateDisplay()
+    #
+    def clicked_Numeric(self, button, data):
+        if(not self.isConnected() or self.entryMode is None):
+            return
+        self.entryDigits = self.entryDigits + str(data)
+        self.showEntry()
+        if(len(self.entryDigits) == ENTRY_SETTINGS[self.entryMode].digits):
+            self.confirmEntry()
+
+    # recall settings from memory slot, output is disabled first
+    def clicked_Memory(self, button, slot):
+        self.cancelEntry()
+        self.outputOnOff = False
+        self.updateButtonStates()
+        def recall(psu):
+            psu.set_output(False)
+            psu.recall(slot)
+        self.sendCommand(recall)
+        self.showMessage(f"Memory M{slot} recalled, output disabled")
 
     # output enable or disable
     def clicked_outputOnOff(self, button):
         self.outputOnOff = not self.outputOnOff
-        if(self.outputOnOff == False):
-            self.communicationPort.write(bytes('OUT0', encoding='utf-8'))
-            time.sleep(0.15)
-        elif(self.outputOnOff == True):
-            self.communicationPort.write(bytes('OUT1', encoding='utf-8'))
-            time.sleep(0.15)
-        else:
-            print("Unknown error!")
-        # update display
-        self.updateDisplay()
+        self.updateButtonStates()
+        enabled = self.outputOnOff
+        self.sendCommand(lambda psu: psu.set_output(enabled))
 
     # ovp enable / disable
     def clicked_OVP(self, button):
         self.ovpEnable = not self.ovpEnable
-        if(self.ovpEnable == True):
-            self.communicationPort.write(bytes('OVP1', encoding='utf-8'))
-        elif(self.ovpEnable == False):
-            self.communicationPort.write(bytes('OVP0', encoding='utf-8'))
-        else:
-            print("Unknown error!")
-        time.sleep(0.15)
+        self.updateButtonStates()
+        enabled = self.ovpEnable
+        self.sendCommand(lambda psu: psu.set_ovp(enabled))
 
     # ocp enable / disable
     def clicked_OCP(self, button):
         self.ocpEnable = not self.ocpEnable
-        if(self.ocpEnable == True):
-            self.communicationPort.write(bytes('OCP1', encoding='utf-8'))
-        elif(self.ocpEnable == False):
-            self.communicationPort.write(bytes('OCP0', encoding='utf-8'))
-        else:
-            print("Unknown error!")
-        time.sleep(0.15)
-
-    # fetch an current user set voltage
-    def userSetVoltage(self):
-        self.communicationPort.write(bytes('VSET1?', encoding='utf-8'))
-        time.sleep(0.15)
-        _userSetVoltage = self.communicationPort.read(self.communicationPort.in_waiting)
-
-        return float(_userSetVoltage)
-
-
-    # fetch an current user set current
-    def userSetCurrent(self):
-        self.communicationPort.write(bytes('ISET1?', encoding='utf-8'))
-        time.sleep(0.15)
-        _userSetCurrent = self.communicationPort.read(self.communicationPort.in_waiting)
-
-        return float(_userSetCurrent)
-
-
-    # fetch an actual output voltage
-    def actualOutputVoltage(self):
-        self.communicationPort.write(bytes('VOUT1?', encoding='utf-8'))
-        time.sleep(0.15)
-        _actualOutputVoltage = self.communicationPort.read(self.communicationPort.in_waiting)
-
-        return float(_actualOutputVoltage)
-
-
-    # fetch an actual output current
-    def actualOutputCurrent(self):
-        self.communicationPort.write(bytes('IOUT1?', encoding='utf-8'))
-        time.sleep(0.15)
-        _actualOutputCurrent = self.communicationPort.read(self.communicationPort.in_waiting)
-
-        return float(_actualOutputCurrent)
-
-
-    # write an current user set voltage
-    def writeUserSetVoltage(self):
-        self.communicationPort.write(bytes('VSET1:', encoding='utf-8') + bytes(self._userSetVoltage, encoding='utf-8'))
-        time.sleep(0.15)
-
-    # write an current user set current
-    def writeUserSetCurrent(self):
-        self.communicationPort.write(bytes('ISET1:', encoding='utf-8') + bytes(self._userSetCurrent, encoding='utf-8'))
-        time.sleep(0.15)
-
-    # output disable
-    def disableOutput(self):
-        self.outputOnOff = False
-        self.communicationPort.write(bytes('OUT0', encoding='utf-8'))
-        time.sleep(0.15)
+        self.updateButtonStates()
+        enabled = self.ocpEnable
+        self.sendCommand(lambda psu: psu.set_ocp(enabled))
 
 if __name__ == '__main__':
     main = mainWindow()
