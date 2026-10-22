@@ -1,7 +1,7 @@
 # Program:      KORAD DC POWER SUPPLY CONTROL
 # Author:       Elvis Baketa
 # Device:       RND 320-KA3005P
-#               Python 2.7.16
+#               Python 3
 #               PyGObject
 #               PySerial
 
@@ -26,5 +26,18 @@
 18-04-2021
 - on application exit disable output
 
-11-12-2023 
-- application rewriten and adopted for python3 
+11-12-2023
+- application rewriten and adopted for python3
+
+22-10-2026 (version 0.4)
+- serial protocol moved to korad.py (KoradPSU), with unit tests in tests/
+- reliable reading of device responses, extra digit in ISET1? response ignored
+- no crash when the device is missing or unplugged, controls are disabled
+- output, OVP and OCP state read from the device (STATUS? bits 6, 7, 5)
+- device communication in a background thread, the GUI no longer blocks
+- live update of measured voltage and current
+- value entry with Enter, Backspace, Esc and 30 V / 5 A limits
+- memory shortcut fixed: M followed by 1-5
+- output, OVP and OCP buttons show their state
+- Glade file is found when started from another directory
+- code cleanup, PEP 8 names
